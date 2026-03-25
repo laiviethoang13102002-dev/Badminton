@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Badminton Manager - VCB</title>
+    <style>
+        :root {
+            --bg: #0d1117; --card: #161b22; --accent: #238636;
+            --text: #e6edf3; --border: #30363d; --blue: #58a6ff;
+        }
+
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            background: var(--bg); color: var(--text);
+            margin: 0; padding: 10px; touch-action: manipulation;
+        }
+
+        .container { max-width: 450px; margin: auto; }
+        h3 { color: var(--blue); text-align: center; margin: 10px 0; }
+
+        .card {
+            background: var(--card); padding: 12px;
+            border-radius: 10px; border: 1px solid var(--border);
+            margin-bottom: 10px;
+        }
+
+        label { display: block; font-size: 0.75em; color: #8b949e; margin-bottom: 4px; }
+
+        input {
+            width: 100%; background: #0d1117; border: 1px solid var(--border);
+            color: white; padding: 10px; border-radius: 6px; box-sizing: border-box; 
+            font-size: 16px; /* Chống zoom trên iPhone */
+        }
+
+        .money-grid {
+            display: grid; grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px; margin-top: 5px;
+        }
+
+        .add-row { display: flex; gap: 8px; margin-top: 5px; }
+        .btn-add {
+            background: var(--accent); color: white; border: none;
+            padding: 0 15px; border-radius: 6px; font-weight: bold; cursor: pointer;
+        }
+
+        /* Bảng danh sách */
+        .table-container {
+            max-height: 240px; overflow-y: auto;
+            border-top: 1px solid var(--border); margin-top: 10px;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th { position: sticky; top: 0; background: var(--card); padding: 10px 5px; text-align: left; font-size: 0.8em; color: #8b949e; }
+        td { padding: 10px 5px; border-bottom: 1px solid var(--border); font-size: 0.9em; }
+
+        .status-btn {
+            background: #21262d; color: #8b949e; border: 1px solid var(--border);
+            padding: 6px 10px; border-radius: 20px; font-size: 0.7em; cursor: pointer;
+        }
+        .paid { background: rgba(46, 160, 67, 0.2); color: #3fb950; border-color: #238636; }
+        .del-btn { color: #f85149; background: none; border: none; font-size: 1.2em; padding: 5px; cursor: pointer; }
+
+        /* Tổng kết */
+        .summary {
+            background: #161b22; padding: 15px; border-radius: 10px;
+            border: 1px solid var(--border); border-left: 4px solid var(--blue);
+        }
+        .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .total { color: #4ade80; font-weight: bold; }
+        .per-head { color: #fbbf24; font-weight: bold; font-size: 1.3em; }
+
+        .btn-pay {
+            width: 100%; background: var(--blue); color: white; border: none;
+            padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer;
+            margin-top: 10px; font-size: 1em;
+        }
+
+        /* Modal QR chuẩn */
+        #qrModal {
+            display: none; position: fixed; inset: 0; 
+            background: rgba(0,0,0,0.95); z-index: 999;
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+        #qrImg { 
+            width: 280px; height: 280px; background: white; 
+            padding: 10px; border-radius: 10px; display: none;
+        }
+        .close-btn { 
+            margin-top: 25px; background: #da3633; color: white; 
+            border: none; padding: 12px 50px; border-radius: 8px; 
+            font-weight: bold; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h3>🏸 Gà kon tập chơi</h3>
+    
+    <div class="card">
+        <label>Ngày & Giờ</label>
+        <input type="datetime-local" id="date">
+        <div class="money-grid">
+            <div><label>Tiền sân</label><input type="tel" id="f1" oninput="fmt(this)" placeholder="0"></div>
+            <div><label>Tiền cầu</label><input type="tel" id="f2" oninput="fmt(this)" placeholder="0"></div>
+            <div><label>Linh tinh</label><input type="tel" id="f3" oninput="fmt(this)" placeholder="0"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <label>Thêm thành viên</label>
+        <div class="add-row">
+            <input type="text" id="pName" placeholder="Nhập tên..." style="flex:1">
+            <button class="btn-add" id="btnAdd">THÊM</button>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th style="width:10%">#</th><th>Tên</th><th style="text-align:center">Trạng thái</th><th style="text-align:right">Xóa</th></tr>
+                </thead>
+                <tbody id="list"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="summary">
+        <div class="row"><span>Sĩ số:</span> <span id="count">0</span></div>
+        <div class="row"><span>Tổng cộng:</span> <span class="total"><span id="total">0</span> VNĐ</span></div>
+        <hr style="border:0; border-top:1px solid var(--border); margin:10px 0;">
+        <div class="row">
+            <span style="font-weight:bold">MỖI NGƯỜI:</span>
+            <span class="per-head"><span id="per">0</span> VNĐ</span>
+        </div>
+        <button class="btn-pay" id="btnPay">💳 THANH TOÁN (QR)</button>
+    </div>
+</div>
+
+<div id="qrModal">
+    <div id="loading" style="color:white; margin-bottom:10px;">Đang tạo mã QR Vietcombank...</div>
+    <img id="qrImg" src="" alt="Mã QR">
+    <p id="qrInfo" style="color:#fbbf24; margin-top:15px; font-weight:bold;"></p>
+    <button class="close-btn" id="btnCloseQR">ĐÓNG</button>
+</div>
+
+<script>
+    const BANK = "vietcombank";
+    const STK = "1017409554";
+    const NAME = "LAI VIET HOANG";
+
+    let players = JSON.parse(localStorage.getItem('bmt_v6')) || [];
+    document.getElementById('date').value = new Date().toLocaleString('sv-SE').slice(0, 16);
+
+    // Gán sự kiện bằng JavaScript để đảm bảo "Bấm được"
+    document.getElementById('btnAdd').onclick = addPlayer;
+    document.getElementById('btnPay').onclick = showQR;
+    document.getElementById('btnCloseQR').onclick = () => document.getElementById('qrModal').style.display = 'none';
+
+    function fmt(el) {
+        let v = el.value.replace(/\D/g, "");
+        el.value = v.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        updateAll();
+    }
+
+    function addPlayer() {
+        const input = document.getElementById('pName');
+        if (!input.value.trim()) return;
+        players.push({ name: input.value.trim(), paid: false });
+        input.value = "";
+        save();
+    }
+
+    function deletePlayer(i) {
+        if(confirm("Xóa người này?")) {
+            players.splice(i, 1);
+            save();
+        }
+    }
+
+    function togglePaid(i) {
+        players[i].paid = !players[i].paid;
+        save();
+    }
+
+    function save() {
+        localStorage.setItem('bmt_v6', JSON.stringify(players));
+        updateAll();
+    }
+
+    function updateAll() {
+        // Render List
+        const tbody = document.getElementById('list');
+        tbody.innerHTML = players.map((p, i) => `
+            <tr>
+                <td>${i+1}</td>
+                <td>${p.name}</td>
+                <td style="text-align:center">
+                    <button class="status-btn ${p.paid?'paid':''}" onclick="togglePaid(${i})">${p.paid?'● Đã trả':'○ Chưa trả'}</button>
+                </td>
+                <td style="text-align:right">
+                    <button class="del-btn" onclick="deletePlayer(${i})">×</button>
+                </td>
+            </tr>
+        `).join('');
+        document.getElementById('count').innerText = players.length;
+
+        // Calc Money
+        const f1 = parseInt(document.getElementById('f1').value.replace(/,/g, "")) || 0;
+        const f2 = parseInt(document.getElementById('f2').value.replace(/,/g, "")) || 0;
+        const f3 = parseInt(document.getElementById('f3').value.replace(/,/g, "")) || 0;
+        const total = f1 + f2 + f3;
+        const per = players.length > 0 ? Math.ceil((total / players.length) / 1000) * 1000 : 0;
+        
+        document.getElementById('total').innerText = total.toLocaleString();
+        document.getElementById('per').innerText = per.toLocaleString();
+        window.currentPer = per;
+    }
+
+    function showQR() {
+        if (!window.currentPer || window.currentPer <= 0) {
+            alert("Vui lòng nhập tiền và thêm người chơi trước!");
+            return;
+        }
+        const modal = document.getElementById('qrModal');
+        const img = document.getElementById('qrImg');
+        const load = document.getElementById('loading');
+        
+        const desc = `Cau long ${document.getElementById('date').value.split('T')[0]}`;
+        const url = `https://img.vietqr.io/image/${BANK}-${STK}-compact.png?amount=${window.currentPer}&addInfo=${encodeURIComponent(desc)}&accountName=${encodeURIComponent(NAME)}`;
+        
+        modal.style.display = 'flex';
+        img.style.display = 'none';
+        load.style.display = 'block';
+
+        img.onload = () => {
+            load.style.display = 'none';
+            img.style.display = 'block';
+        };
+        img.src = url;
+        document.getElementById('qrInfo').innerText = "Số tiền: " + window.currentPer.toLocaleString() + " VNĐ";
+    }
+
+    // Chạy lần đầu
+    updateAll();
+</script>
+</body>
+</html>
